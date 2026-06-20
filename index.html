@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第13號教室</title>
+<style>
+  :root{
+    --bg:#05060a;
+    --panel:#13151c;
+    --accent:#b3261e;
+    --accent2:#e0a458;
+    --text:#e9e6df;
+    --text-dim:#9a958c;
+    --line:#2a2c35;
+    --flash:#dce8ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    width:100%;height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Noto Serif TC","Noto Serif CJK TC",serif;
+    overflow:hidden;
+  }
+  #app{position:relative;width:100%;height:100vh;overflow:hidden;}
+  .scene{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;
+    transition:opacity .9s ease;
+  }
+  .scene.active{opacity:1;pointer-events:auto;}
+
+  /* ── 封面 ── */
+  #scene-cover{flex-direction:column;background:#000;text-align:center;}
+  #scene-cover .lightning-overlay{
+    position:absolute;inset:0;
+    background:var(--flash);opacity:0;
+    mix-blend-mode:overlay;pointer-events:none;
+  }
+  #scene-cover .vignette{
+    position:absolute;inset:0;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(0,0,0,.95) 100%);
+    pointer-events:none;
+  }
+  .cover-title{
+    position:relative;z-index:2;
+    font-size:clamp(2.4rem,8vw,5rem);
+    letter-spacing:.5em;color:#f2efe6;
+    text-shadow:0 0 18px rgba(180,40,30,.55),0 0 4px #000;
+    font-weight:700;margin-bottom:.6em;
+  }
+  .cover-sub{
+    position:relative;z-index:2;
+    color:var(--text-dim);letter-spacing:.3em;
+    font-size:.85rem;margin-bottom:3rem;
+  }
+  .start-btn{
+    position:relative;z-index:2;
+    font-family:"Noto Serif TC",serif;
+    font-size:1.1rem;letter-spacing:.4em;
+    padding:.9em 2.4em;
+    background:transparent;border:1px solid var(--accent);
+    color:var(--text);cursor:pointer;
+    transition:background .3s,color .3s,box-shadow .3s;
+  }
+  .start-btn:hover{background:var(--accent);color:#fff;box-shadow:0 0 25px rgba(179,38,30,.6);}
+
+  /* ── 故事頁共用 ── */
+  .scene-story-pg{
+    flex-direction:column;
+    background:radial-gradient(ellipse at 50% 30%,#0d0f15 0%,#000 80%);
+    padding:5vh 8vw;
+  }
+  .story-box{max-width:760px;text-align:left;width:100%;}
+  .story-line{
+    font-size:clamp(1rem,2.2vw,1.3rem);
+    line-height:2.1;color:var(--text);
+    opacity:0;transform:translateY(8px);
+    transition:opacity .9s ease,transform .9s ease;
+    margin-bottom:1em;
+  }
+  .story-line.show{opacity:1;transform:translateY(0);}
+  .story-line.whisper{color:var(--accent2);font-style:italic;letter-spacing:.15em;}
+
+  /* 故事頁底部按鈕區 */
+  .story-footer{
+    margin-top:2.4rem;
+    display:flex;align-items:center;gap:1.6rem;
+    opacity:.85;
+  }
+  .story-next-btn{
+    font-family:"Noto Serif TC",serif;
+    font-size:.85rem;letter-spacing:.35em;
+    padding:.6em 1.8em;
+    background:transparent;
+    border:1px solid var(--text-dim);
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:border-color .3s,color .3s;
+    animation:pulse 2.4s infinite;
+  }
+  .story-next-btn:hover{border-color:var(--accent2);color:var(--accent2);animation:none;}
+  @keyframes pulse{0%,100%{opacity:.4;}50%{opacity:1;}}
+
+  /* ── 樓梯口 ── */
+  #scene-stairs{background:#000;}
+  .stairs-wrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+  .stairs-wrap img.bg{width:100%;height:100%;object-fit:cover;filter:brightness(.85) saturate(.9);}
+
+  /* 場景說明文字 */
+  .scene-caption{
+    position:absolute;top:4%;left:50%;
+    transform:translateX(-50%);
+    font-size:.72rem;letter-spacing:.4em;
+    color:var(--text-dim);z-index:5;
+    pointer-events:none;
+  }
+
+  /* ── 熱區：無邊框，改為懸浮標籤按鈕 ── */
+  .hotspot{
+    position:absolute;
+    cursor:pointer;
+    /* 完全透明，只有 label 顯示 */
+  }
+
+  /* 懸浮標籤：平時隱藏，hover 時飄出 */
+  .hotspot-tag{
+    position:absolute;
+    /* 預設置於熱區中央下方 */
+    bottom:-2.4rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;
+    font-size:.72rem;letter-spacing:.2em;
+    color:var(--accent2);
+    background:rgba(5,6,10,.82);
+    border:1px solid rgba(224,164,88,.4);
+    padding:.32em .9em;
+    border-radius:2px;
+    opacity:0;
+    transition:opacity .25s,transform .25s;
+    pointer-events:none;
+    z-index:20;
+  }
+  .hotspot:hover .hotspot-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* 各熱區位置 */
+  .hotspot-c{top:4%;left:34%;width:32%;height:30%;}
+  .hotspot-a{top:18%;left:2%;width:22%;height:38%;}
+  .hotspot-b{top:30%;left:45%;width:40%;height:55%;}
+
+  /* ── 子畫面 ── */
+  .subview{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:#000;
+    opacity:0;pointer-events:none;
+    transition:opacity .6s ease;
+    z-index:10;
+  }
+  .subview.active{opacity:1;pointer-events:auto;}
+  .subview>img{max-width:92%;max-height:92%;object-fit:contain;filter:brightness(.92);}
+
+  .back-btn{
+    position:absolute;top:4%;right:4%;
+    font-family:"Noto Serif TC",serif;
+    font-size:.82rem;letter-spacing:.3em;
+    padding:.55em 1.3em;
+    background:rgba(10,10,14,.7);
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:border-color .3s,color .3s;
+    z-index:20;
+  }
+  .back-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+
+  .zoom-note{
+    position:absolute;top:4%;left:4%;
+    font-size:.68rem;letter-spacing:.32em;
+    color:var(--text-dim);z-index:20;
+    pointer-events:none;
+  }
+
+  /* 布告欄內的紙條熱區 ── 同樣無方框 */
+  #subview-board .doc-hotspot{
+    position:absolute;
+    cursor:pointer;
+  }
+  /* 懸浮提示繼承共用 .hotspot-tag 邏輯，但用 .doc-tag 區分 */
+  #subview-board .doc-tag{
+    position:absolute;
+    bottom:-2.2rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;
+    font-size:.7rem;letter-spacing:.18em;
+    color:var(--accent);
+    background:rgba(5,6,10,.85);
+    border:1px solid rgba(179,38,30,.5);
+    padding:.28em .85em;border-radius:2px;
+    opacity:0;transition:opacity .25s,transform .25s;
+    pointer-events:none;z-index:30;
+  }
+  #subview-board .doc-hotspot:hover .doc-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* 紙條熱區在圖片上的相對位置 */
+  #subview-board .doc-hotspot-note{
+    top:54%;left:50%;width:13%;height:26%;
+  }
+
+  /* ── 密碼鎖 ── */
+  #scene-lock{background:radial-gradient(ellipse at 50% 40%,#161821 0%,#04050a 75%);}
+  .lock-wrap{width:min(92vw,560px);text-align:center;padding:0 4vw;}
+  .lock-hint{
+    color:var(--text-dim);font-size:.85rem;line-height:1.95;
+    letter-spacing:.06em;margin-bottom:2.4rem;
+  }
+  .lock-hint .hl{color:var(--accent);font-weight:700;}
+  .dials{display:flex;justify-content:center;gap:clamp(1rem,4vw,2.4rem);margin-bottom:2.4rem;}
+  .dial{display:flex;flex-direction:column;align-items:center;gap:.6rem;}
+
+  /* 撥號箭頭改為按鈕樣式 */
+  .dial-arrow-btn{
+    font-size:1.1rem;
+    width:2.4rem;height:2rem;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    cursor:pointer;
+    border-radius:3px;
+    transition:border-color .2s,color .2s,background .2s;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;
+  }
+  .dial-arrow-btn:hover{
+    border-color:var(--accent2);
+    color:var(--accent2);
+    background:rgba(224,164,88,.08);
+  }
+  .dial-arrow-btn:active{background:rgba(224,164,88,.18);}
+
+  .dial-num{
+    font-size:clamp(2.4rem,9vw,3.6rem);
+    font-weight:700;width:1.4em;
+    color:var(--text);
+    border:1px solid var(--line);
+    background:#0c0e14;
+    border-radius:6px;padding:.15em 0;
+    box-shadow:inset 0 0 18px rgba(0,0,0,.7);
+    user-select:none;text-align:center;
+  }
+
+  .lock-actions{display:flex;justify-content:center;gap:1rem;margin-top:.4rem;}
+  .lock-btn{
+    font-family:"Noto Serif TC",serif;
+    font-size:.95rem;letter-spacing:.3em;
+    padding:.8em 2em;
+    background:transparent;
+    border:1px solid var(--accent);
+    color:var(--text);
+    cursor:pointer;
+    transition:background .3s,color .3s,box-shadow .3s;
+  }
+  .lock-btn:hover{background:var(--accent);color:#fff;box-shadow:0 0 22px rgba(179,38,30,.55);}
+  .lock-btn.secondary{border-color:var(--line);color:var(--text-dim);}
+  .lock-btn.secondary:hover{background:var(--line);color:var(--text);box-shadow:none;}
+
+  .lock-msg{
+    margin-top:1.6rem;min-height:1.4em;
+    font-size:.85rem;letter-spacing:.22em;color:var(--accent2);
+    transition:color .2s;
+  }
+  .lock-msg.error{color:var(--accent);animation:shake .4s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-8px);}40%{transform:translateX(8px);}
+    60%{transform:translateX(-5px);}80%{transform:translateX(5px);}
+  }
+
+  /* ── 二樓走廊 ── */
+  #scene-corridor{background:#000;flex-direction:column;}
+  #scene-corridor img{width:100%;height:78vh;object-fit:cover;filter:brightness(.9);}
+  .corridor-caption{
+    margin-top:1.4rem;text-align:center;
+    color:var(--text-dim);letter-spacing:.35em;font-size:.85rem;
+  }
+
+  /* ── 走廊改為可互動場景 ── */
+  #scene-corridor{background:#000;flex-direction:column;position:relative;}
+  #scene-corridor>.corridor-caption{
+    position:absolute;bottom:6%;left:50%;transform:translateX(-50%);
+    text-align:center;color:var(--text-dim);letter-spacing:.35em;font-size:.85rem;
+    pointer-events:none;z-index:4;
+  }
+  .corridor-bg-wrap{position:relative;width:100%;height:100vh;overflow:hidden;}
+  .corridor-bg-wrap img{width:100%;height:100%;object-fit:cover;filter:brightness(.88);}
+  /* 門熱區：E 近鏡頭左邊，F 右側深處 */
+  .door-hotspot{
+    position:absolute;cursor:pointer;
+  }
+  .door-hotspot .hotspot-tag{
+    position:absolute;bottom:-2.4rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;font-size:.72rem;letter-spacing:.2em;
+    color:var(--accent2);background:rgba(5,6,10,.82);
+    border:1px solid rgba(224,164,88,.4);
+    padding:.32em .9em;border-radius:2px;
+    opacity:0;transition:opacity .25s,transform .25s;
+    pointer-events:none;z-index:20;
+  }
+  .door-hotspot:hover .hotspot-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* E：理化實驗室（近景左門） */
+  .door-e{top:15%;left:3%;width:28%;height:72%;}
+  /* F：美術教室（遠處右側） */
+  .door-f{top:25%;left:38%;width:20%;height:58%;}
+
+  /* ── 美術教室鎖定提示 ── */
+  #art-locked-msg{
+    position:fixed;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(10,10,14,.92);
+    border:1px solid var(--accent);
+    padding:1.6em 2.4em;
+    text-align:center;font-size:.9rem;
+    letter-spacing:.2em;color:var(--text);
+    z-index:100;display:none;
+    border-radius:3px;
+  }
+  #art-locked-msg button{
+    margin-top:1.2em;
+    font-family:"Noto Serif TC",serif;
+    font-size:.8rem;letter-spacing:.3em;
+    padding:.5em 1.4em;
+    background:transparent;border:1px solid var(--line);
+    color:var(--text-dim);cursor:pointer;
+    transition:border-color .2s,color .2s;
+  }
+  #art-locked-msg button:hover{border-color:var(--accent2);color:var(--accent2);}
+
+  /* ── 理化實驗室 ── */
+  #scene-lab{background:#000;}
+  .lab-wrap{position:relative;width:100%;height:100vh;}
+  .lab-wrap img.bg{width:100%;height:100%;object-fit:cover;filter:brightness(.82);}
+
+  /* ── 子畫面（實驗室用，繼承 .subview） ── */
+
+  /* ── 桌子拖曳區 ── */
+  #subview-desk{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:#0a0b10;
+    opacity:0;pointer-events:none;
+    transition:opacity .6s;z-index:10;
+  }
+  #subview-desk.active{opacity:1;pointer-events:auto;}
+  .desk-scene{
+    position:relative;
+    width:min(900px,96vw);
+    /* 高度由底圖自然撐開，不固定，避免裁切 */
+    background:#12110e;
+    border:1px solid #2a2820;
+    border-radius:4px;overflow:hidden;
+  }
+  /* 底圖：用 position relative 撐開容器高度 */
+  .desk-bg{
+    position:relative;
+    width:100%;height:auto;
+    display:block;
+    object-fit:contain;
+    z-index:1;
+  }
+  /* 可拖曳物件：相對底圖百分比定位 */
+  .drag-item{
+    position:absolute;cursor:grab;
+    user-select:none;z-index:5;
+    transition:box-shadow .2s;
+    border-radius:6px;
+    overflow:hidden;
+    background:transparent;
+  }
+  .drag-item img{
+    width:100%;height:100%;
+    object-fit:contain;
+    pointer-events:none;
+    user-select:none;
+    -webkit-user-drag:none;
+    display:block;
+  }
+  .drag-item:active{cursor:grabbing;z-index:10;}
+  .drag-item.removed{opacity:0;pointer-events:none;transition:opacity .4s;}
+  /* 清除說明文字 */
+  .desk-hint{
+    position:absolute;bottom:12px;left:50%;
+    transform:translateX(-50%);
+    font-size:.68rem;letter-spacing:.3em;color:rgba(200,190,170,.5);
+    pointer-events:none;z-index:6;
+  }
+  .cleared-msg{
+    position:absolute;bottom:12px;left:50%;
+    transform:translateX(-50%);
+    font-size:.72rem;letter-spacing:.3em;color:var(--accent2);
+    opacity:0;transition:opacity .8s;pointer-events:none;z-index:6;
+  }
+  .cleared-msg.show{opacity:1;}
+
+  /* ── 藥品櫃子畫面 ── */
+  #subview-cabinet{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:#060709;
+    opacity:0;pointer-events:none;
+    transition:opacity .6s;z-index:10;
+  }
+  #subview-cabinet.active{opacity:1;pointer-events:auto;}
+  .cabinet-wrap{
+    position:relative;
+    width:min(860px,96vw);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .cabinet-wrap img{
+    max-width:100%;max-height:88vh;object-fit:contain;
+    filter:brightness(.88);
+  }
+  /* 電子鎖熱區（J） */
+  .cabinet-lock-zone{
+    position:absolute;
+    cursor:pointer;
+    /* 位置依實際圖片調整，預設放中間 */
+    top:43%;left:28%;width:8%;height:12%;
+  }
+  .cabinet-lock-zone .hotspot-tag{
+    position:absolute;bottom:-2.2rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;font-size:.7rem;letter-spacing:.18em;
+    color:var(--accent2);background:rgba(5,6,10,.85);
+    border:1px solid rgba(224,164,88,.4);
+    padding:.28em .85em;border-radius:2px;
+    opacity:0;transition:opacity .25s,transform .25s;
+    pointer-events:none;z-index:30;
+  }
+  .cabinet-lock-zone:hover .hotspot-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ── 電子鎖畫面（藥品櫃 & 美術教室共用） ── */
+  .elock-overlay{
+    position:fixed;inset:0;z-index:50;
+    background:rgba(4,5,10,.92);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;
+    transition:opacity .35s;
+  }
+  .elock-overlay.active{opacity:1;pointer-events:auto;}
+  .elock-box{
+    width:min(92vw,420px);
+    background:#0e1018;
+    border:1px solid #2d3040;
+    border-radius:6px;padding:2.4em 2em;
+    text-align:center;
+  }
+  .elock-title{
+    font-size:.8rem;letter-spacing:.45em;
+    color:var(--text-dim);margin-bottom:1.8em;
+  }
+  /* 數字按鍵面板 */
+  .elock-display{
+    font-size:2.2rem;font-weight:700;
+    letter-spacing:.4em;
+    color:#7fff8a;
+    background:#050a05;
+    border:1px solid #1a3a1a;
+    border-radius:4px;padding:.3em .6em;
+    min-height:1.6em;margin-bottom:1.6em;
+    font-family:monospace;
+    box-shadow:inset 0 0 12px rgba(0,80,0,.4);
+  }
+  .elock-keys{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:.55rem;margin-bottom:1.2rem;
+  }
+  .elock-key{
+    font-family:"Noto Serif TC",serif;
+    font-size:1.2rem;font-weight:600;
+    padding:.7em 0;
+    background:#131620;
+    border:1px solid #2a2e3e;
+    color:var(--text);
+    cursor:pointer;border-radius:4px;
+    transition:background .15s,border-color .15s;
+    user-select:none;
+  }
+  .elock-key:hover{background:#1e2235;border-color:#3d4260;}
+  .elock-key:active{background:#272d45;}
+  .elock-key.del{color:var(--accent2);font-size:1rem;}
+  .elock-key.confirm{
+    grid-column:span 3;
+    background:transparent;
+    border-color:var(--accent);color:var(--text);
+    letter-spacing:.3em;font-size:.95rem;
+  }
+  .elock-key.confirm:hover{background:var(--accent);color:#fff;}
+  .elock-msg{
+    font-size:.78rem;letter-spacing:.22em;
+    color:var(--accent2);min-height:1.2em;
+    margin-top:.6em;
+  }
+  .elock-msg.err{color:var(--accent);animation:shake .4s;}
+  .elock-close{
+    margin-top:1em;
+    font-size:.72rem;letter-spacing:.3em;
+    color:var(--text-dim);background:transparent;
+    border:none;cursor:pointer;
+    transition:color .2s;
+  }
+  .elock-close:hover{color:var(--accent2);}
+
+  /* ── 打開的藥品櫃 ── */
+  #subview-cabinet-open{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:#060709;
+    opacity:0;pointer-events:none;
+    transition:opacity .6s;z-index:10;
+  }
+  #subview-cabinet-open.active{opacity:1;pointer-events:auto;}
+  .cabinet-open-wrap{
+    position:relative;
+    width:min(860px,96vw);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .cabinet-open-wrap img.main{
+    max-width:100%;max-height:88vh;
+    object-fit:contain;filter:brightness(.88);
+  }
+  /* K 熱區：密碼紙 */
+  .cabinet-paper-zone{
+    position:absolute;
+    cursor:pointer;
+    top:20%;left:20%;width:35%;height:50%;
+  }
+  .cabinet-paper-zone .hotspot-tag{
+    position:absolute;bottom:-2.2rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;font-size:.7rem;letter-spacing:.18em;
+    color:var(--accent2);background:rgba(5,6,10,.85);
+    border:1px solid rgba(224,164,88,.4);
+    padding:.28em .85em;border-radius:2px;
+    opacity:0;transition:opacity .25s,transform .25s;
+    pointer-events:none;z-index:30;
+  }
+  .cabinet-paper-zone:hover .hotspot-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* 密碼紙全螢幕顯示 */
+  #overlay-artpw{
+    position:fixed;inset:0;z-index:60;
+    background:rgba(4,5,10,.94);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .4s;
+  }
+  #overlay-artpw.active{opacity:1;pointer-events:auto;}
+  #overlay-artpw img{
+    max-width:88vw;max-height:84vh;
+    object-fit:contain;border:1px solid #2a2c35;
+  }
+  #overlay-artpw .close-overlay{
+    position:absolute;top:4%;right:4%;
+    font-size:.8rem;letter-spacing:.3em;
+    color:var(--text-dim);background:transparent;
+    border:none;cursor:pointer;transition:color .2s;
+  }
+  #overlay-artpw .close-overlay:hover{color:var(--accent2);}
+
+  /* ── 美術教室電子鎖入口 ── */
+  #scene-art-lock{
+    background:radial-gradient(ellipse at 50% 40%,#161821 0%,#04050a 75%);
+    flex-direction:column;
+  }
+  .art-lock-title{
+    font-size:.78rem;letter-spacing:.5em;
+    color:var(--text-dim);margin-bottom:2rem;
+  }
+
+  /* ── 美術教室場景 ── */
+  #scene-art{background:#000;}
+  /* art-wrap 撐滿 scene，圖片用 absolute 填滿 */
+  .art-wrap{
+    position:absolute;inset:0;
+    overflow:hidden;
+  }
+  .art-wrap img.bg{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    object-fit:cover;
+    filter:brightness(.85);
+    z-index:0;
+  }
+  .art-wrap .scene-caption{
+    position:absolute;top:4%;left:50%;
+    transform:translateX(-50%);
+    z-index:5;pointer-events:none;
+  }
+  .art-wrap .back-btn{position:absolute;z-index:5;}
+
+  /* 美術教室四熱區（依示意圖相對位置） */
+  .art-hotspot{
+    position:absolute;
+    cursor:pointer;
+    z-index:3;
+  }
+  .art-hotspot .hotspot-tag{
+    position:absolute;bottom:-2.4rem;left:50%;
+    transform:translateX(-50%) translateY(4px);
+    white-space:nowrap;
+    font-size:.72rem;letter-spacing:.2em;
+    color:var(--accent2);
+    background:rgba(5,6,10,.82);
+    border:1px solid rgba(224,164,88,.4);
+    padding:.32em .9em;border-radius:2px;
+    opacity:0;transition:opacity .25s,transform .25s;
+    pointer-events:none;z-index:20;
+  }
+  .art-hotspot:hover .hotspot-tag{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* L 顏料櫃（畫面中段，偏中央） */
+  .art-hotspot-l{ top:44%; left:45%; width:29%; height:18%; }
+  /* M 牆上掛畫(花瓶畫) */
+  .art-hotspot-m{ top:18%; left:64%; width:9%; height:17%; }
+  /* N 桌椅 */
+  .art-hotspot-n{ top:55%; left:20%; width:11%; height:17%; }
+  /* O 雕像胸像 */
+  .art-hotspot-o{ top:30%; left:23%; width:11%; height:18%; }
+
+  /* ── 美術教室四個放大子畫面（共用樣式） ── */
+  .art-subview{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:#000;
+    opacity:0;pointer-events:none;
+    transition:opacity .6s ease;
+    z-index:10;
+  }
+  .art-subview.active{opacity:1;pointer-events:auto;}
+  .art-subview img.zoom-img{
+    max-width:92%;max-height:88%;
+    object-fit:contain;
+    filter:brightness(.92);
+  }
+
+  /* ── 雕像密語對話框 ── */
+  .statue-dialog{
+    position:absolute;
+    bottom:8%;left:50%;
+    transform:translateX(-50%);
+    width:min(92vw,520px);
+    background:rgba(10,10,14,.88);
+    border:1px solid var(--accent);
+    border-radius:6px;
+    padding:1.6em 1.8em;
+    text-align:center;
+    z-index:15;
+  }
+  .statue-dialog p{
+    font-size:.85rem;line-height:1.9;
+    color:var(--text);
+    letter-spacing:.04em;
+    margin-bottom:1.2em;
+  }
+  .statue-input-row{
+    display:flex;justify-content:center;gap:.6rem;
+    margin-bottom:1rem;
+  }
+  .statue-input-row input{
+    width:2.4em;text-align:center;
+    font-family:"Noto Serif TC",serif;
+    font-size:1.4rem;
+    background:#0c0e14;
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:4px;
+    padding:.3em 0;
+  }
+  .statue-input-row input:focus{
+    outline:none;border-color:var(--accent2);
+  }
+  .statue-actions{display:flex;justify-content:center;gap:1rem;}
+  .statue-msg{
+    margin-top:.9rem;min-height:1.3em;
+    font-size:.8rem;letter-spacing:.18em;color:var(--accent2);
+  }
+  .statue-msg.error{color:var(--accent);animation:shake .4s;}
+
+  /* ── 第13號教室：文字冒險對話場景 ── */
+  #scene-room13{
+    background:#000;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  /* 房間背景圖 */
+  .room13-bg{
+    position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 35%,#1c1814 0%,#08090c 75%);
+    z-index:0;
+  }
+  .room13-bg img{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    object-fit:cover;
+    filter:brightness(.7);
+  }
+  /* 角色立繪 */
+  .room13-portrait{
+    position:absolute;
+    bottom:0;
+    height:82vh;
+    max-height:780px;
+    width:auto;
+    object-fit:contain;
+    object-position:bottom;
+    opacity:0;
+    transform:translateY(20px);
+    transition:opacity .45s ease, transform .45s ease, filter .3s ease;
+    z-index:1;
+    filter:brightness(.55) saturate(.85);
+    pointer-events:none;
+  }
+  .room13-portrait.active-speaker{
+    opacity:1;
+    transform:translateY(0);
+    filter:brightness(1) saturate(1);
+    z-index:3;
+  }
+  .room13-portrait.bystander{
+    opacity:.55;
+    transform:translateY(0);
+    filter:brightness(.4) saturate(.6);
+    z-index:2;
+  }
+  /* 三人初始定位：輸賠剩(左) 郝事多(中) 李奪會(右) */
+  #portrait-shu{ left:0%; }
+  #portrait-hao{ left:50%; transform:translateX(-50%) translateY(20px); }
+  #portrait-hao.active-speaker,
+  #portrait-hao.bystander{ transform:translateX(-50%) translateY(0); }
+  #portrait-li{ right:0%; }
+
+  /* 對話框 */
+  .room13-dialog-box{
+    position:absolute;
+    bottom:4%;left:50%;
+    transform:translateX(-50%);
+    width:min(94vw,920px);
+    background:rgba(8,8,12,.88);
+    border:1px solid rgba(224,164,88,.35);
+    border-radius:8px;
+    padding:1.5em 2em 1.7em;
+    z-index:10;
+    cursor:pointer;
+    backdrop-filter:blur(2px);
+  }
+  .room13-speaker-name{
+    font-size:.95rem;
+    letter-spacing:.3em;
+    color:var(--accent2);
+    margin-bottom:.7em;
+    font-weight:700;
+    min-height:1.3em;
+  }
+  .room13-dialog-text{
+    font-size:clamp(.95rem,2vw,1.15rem);
+    line-height:1.85;
+    color:var(--text);
+    min-height:3.6em;
+  }
+  .room13-continue-hint{
+    margin-top:.9em;
+    text-align:right;
+    font-size:.7rem;
+    letter-spacing:.2em;
+    color:var(--text-dim);
+    opacity:.7;
+    animation:pulse 2.2s infinite;
+  }
+
+  /* 黑屏轉場 + 逃脫成功 */
+  #scene-blackout{
+    background:#000;
+    flex-direction:column;
+  }
+  #scene-blackout .escape-title{
+    font-size:clamp(2.2rem,7vw,4rem);
+    letter-spacing:.5em;
+    color:#f2efe6;
+    text-shadow:0 0 24px rgba(180,40,30,.5);
+    opacity:0;
+    transition:opacity 1.2s ease;
+  }
+  #scene-blackout .escape-title.show{ opacity:1; }
+
+  @media(max-width:640px){
+    .hotspot-tag,.doc-tag{font-size:.65rem;}
+    .lock-hint{font-size:.78rem;}
+    .elock-key{font-size:1rem;padding:.6em 0;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 封面 ===== -->
+  <section id="scene-cover" class="scene active">
+    <div class="lightning-overlay" id="lightningOverlay"></div>
+    <div class="vignette"></div>
+    <h1 class="cover-title">第 13 號教室</h1>
+    <p class="cover-sub">深 夜 ・ 校 園 ・ 第 13 號 教 室</p>
+    <button class="start-btn" id="startBtn">START</button>
+  </section>
+
+  <!-- ===== 故事第一頁 ===== -->
+  <section id="scene-story1" class="scene scene-story-pg">
+    <div class="story-box">
+      <p class="story-line" data-pg="1">在我們學校，一直流傳著一個讓所有人毛骨悚然的「第 13 號教室」傳說。明明每層樓都只有 12 間教室，但只要到了午夜 12 點，那扇生鏽的鐵門後，就會憑空出現第 13 號教室。</p>
+      <p class="story-line" data-pg="1">據說，所有出於好奇走進那間教室的學長姐，都再也沒有出來過。黑板上殘留著未解開的詭異幾何圖形，課桌椅甚至還維持著他們消失前一刻的模樣。師長們對此閉口不談，只把它當成告誡大家「放學立刻回家」的校園鬼故事。</p>
+      <p class="story-line" data-pg="1">但是，今天晚上，規則由我們來打破！</p>
+      <div class="story-footer">
+        <button class="story-next-btn" id="toStory2">繼 續 ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 故事第二頁 ===== -->
+  <section id="scene-story2" class="scene scene-story-pg">
+    <div class="story-box">
+      <p class="story-line" data-pg="2">討厭補習、不想太早回家的你們，帶著手電筒悄悄潛入了深夜的校園。當手錶的指針重疊在 12 的那一刻，走廊盡頭傳來了「喀噠」一聲——原本鎖上的老舊鐵門，竟然緩緩沉重地開啟了，門縫裡透出幽暗的微光……</p>
+      <p class="story-line whisper" data-pg="2">「臭俗辣！你不敢進去喔？」</p>
+      <p class="story-line" data-pg="2">為了破解這個詛咒，也為了證明自己，你們深吸一口氣，跨進了這間「不存在的第 13 號教室」。然而，就在全員進入的瞬間，身後的鐵門「砰」一聲死死關上！你們逃得出去嗎？</p>
+      <div class="story-footer">
+        <button class="story-next-btn" id="toStairs">進 入 校 園 ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第二幕：樓梯口 ===== -->
+  <section id="scene-stairs" class="scene">
+    <div class="stairs-wrap">
+      <span class="scene-caption">樓 梯 口</span>
+      <img class="bg" src="images/staircase_main.jpg" alt="樓梯口">
+
+      <!-- A 布告欄 -->
+      <div class="hotspot hotspot-a" id="hotspotA">
+        <span class="hotspot-tag">布告欄也太亂了吧……</span>
+      </div>
+      <!-- B 樓梯細節 -->
+      <div class="hotspot hotspot-b" id="hotspotB">
+        <span class="hotspot-tag">樓梯上面好像有什麼字？</span>
+      </div>
+      <!-- C 密碼鎖 -->
+      <div class="hotspot hotspot-c" id="hotspotC">
+        <span class="hotspot-tag">上面不知道通往哪裡…</span>
+      </div>
+    </div>
+
+    <!-- 子畫面：布告欄 -->
+    <div class="subview" id="subview-board">
+      <span class="zoom-note">布 告 欄</span>
+      <button class="back-btn" data-back="stairs">← 返回樓梯口</button>
+      <img src="images/bulletin_board.jpg" alt="布告欄">
+      <!-- 紙條熱區：無邊框，hover 顯示血跡提示 -->
+      <div class="doc-hotspot doc-hotspot-note" id="hotspotNote">
+        <span class="doc-tag">怎麼有血跡?</span>
+      </div>
+    </div>
+
+    <!-- 子畫面：夜間巡視紀錄表 -->
+    <div class="subview" id="subview-note">
+      <span class="zoom-note">夜 間 巡 視 紀 錄 表</span>
+      <button class="back-btn" data-back="board">← 返回布告欄</button>
+      <img src="images/bulletin_note.jpg" alt="夜間巡視紀錄表">
+    </div>
+
+    <!-- 子畫面：樓梯細節 -->
+    <div class="subview" id="subview-detail">
+      <span class="zoom-note">樓 梯 細 節</span>
+      <button class="back-btn" data-back="stairs">← 返回樓梯口</button>
+      <img src="images/staircase_detail.jpg" alt="樓梯細節">
+    </div>
+  </section>
+
+  <!-- ===== 密碼鎖 ===== -->
+  <section id="scene-lock" class="scene">
+    <div class="lock-wrap">
+      <p class="lock-hint">
+        牆上貼著一張潮濕模糊的字條：<br><br>
+        「學姊有<span class="hl">紅綠色盲</span>，所以總是會把個位數和十位數用不同顏色標記，
+        不過她好像<span class="hl">只看得到個位數的顏色</span>耶？」<br><br>
+        旋轉式密碼鎖，請輸入三位數密碼。
+      </p>
+      <div class="dials">
+        <div class="dial">
+          <button class="dial-arrow-btn" data-dial="0" data-dir="1">▲</button>
+          <div class="dial-num" id="dial0">0</div>
+          <button class="dial-arrow-btn" data-dial="0" data-dir="-1">▼</button>
+        </div>
+        <div class="dial">
+          <button class="dial-arrow-btn" data-dial="1" data-dir="1">▲</button>
+          <div class="dial-num" id="dial1">0</div>
+          <button class="dial-arrow-btn" data-dial="1" data-dir="-1">▼</button>
+        </div>
+        <div class="dial">
+          <button class="dial-arrow-btn" data-dial="2" data-dir="1">▲</button>
+          <div class="dial-num" id="dial2">0</div>
+          <button class="dial-arrow-btn" data-dial="2" data-dir="-1">▼</button>
+        </div>
+      </div>
+      <div class="lock-actions">
+        <button class="lock-btn" id="lockSubmit">確 認</button>
+        <button class="lock-btn secondary" id="lockBack">返 回</button>
+      </div>
+      <p class="lock-msg" id="lockMsg"></p>
+    </div>
+  </section>
+
+  <!-- ===== 二樓走廊 ===== -->
+  <section id="scene-corridor" class="scene">
+    <div class="corridor-bg-wrap">
+      <img src="images/corridor_2f.jpg" alt="二樓走廊">
+      <!-- E 理化實驗室（左近門） -->
+      <div class="door-hotspot door-e" id="doorE">
+        <span class="hotspot-tag">理化實驗室有股臭水溝的味道……</span>
+      </div>
+      <!-- F 美術教室（右深門） -->
+      <div class="door-hotspot door-f" id="doorF">
+        <span class="hotspot-tag">你有聽到美術教室裡有人在哭嗎？：）</span>
+      </div>
+    </div>
+    <p class="corridor-caption">鐵門應聲開啟……你們踏入了二樓走廊</p>
+  </section>
+
+  <!-- ===== 美術教室鎖定提示 ===== -->
+  <div id="art-locked-msg">
+    <p>美術教室的門紋絲不動……<br>似乎需要密碼才能進入。</p>
+    <button id="artLockedClose">知道了</button>
+  </div>
+
+  <!-- ===== 理化實驗室 ===== -->
+  <section id="scene-lab" class="scene">
+    <div class="lab-wrap">
+      <span class="scene-caption">理 化 實 驗 室</span>
+      <img class="bg" src="images/lab_room.jpg" alt="理化實驗室">
+      <button class="back-btn" data-back-scene="corridor" style="z-index:5;">&#8592; 返回走廊</button>
+      <!-- G 藥品櫃 -->
+      <div class="hotspot" id="hotspotG" style="top:25%; left:16%; width:32%; height:35%;"">
+        <span class="hotspot-tag">藥品櫃鎖起來了，需要密碼</span>
+      </div>
+      <!-- I 桌子 -->
+      <div class="hotspot" id="hotspotI" style="top:55%;left:52%;width:18%;height:10%;">
+        <span class="hotspot-tag">桌子上都是易燃物，超危險的！</span>
+      </div>
+    </div>
+
+    <!-- 桌子放大（拖曳互動） -->
+    <div id="subview-desk">
+      <span class="zoom-note">實 驗 桌</span>
+      <button class="back-btn" data-back-subview="lab" style="z-index:30;">&#8592; 返回實驗室</button>
+      <div class="desk-scene" id="deskScene">
+        <!-- 底圖：動物線索紙，物件遮住它，移開後自然露出 -->
+        <img class="desk-bg" src="images/animal_clue.jpg" alt="動物線索紙">
+        <!-- 拖曳物件：有圖片時顯示圖片，沒有則顯示色塊 -->
+        <div class="drag-item" id="obj1" style="left:7%;top:13%;width:33%;height:47%;">
+          <img src="images/obj_book.jpg" alt="書本" onerror="this.parentElement.style.background='#5c4a2a';this.remove()">
+        </div>
+        <div class="drag-item" id="obj2" style="left:43%;top:15%;width:36%;height:60%;">
+          <img src="images/obj_beaker.png" alt="燒杯" onerror="this.parentElement.style.background='#2a3c5a';this.remove()">
+        </div>
+        <div class="drag-item" id="obj3" style="left:70%;top:20%;width:41%;height:53%;">
+          <img src="images/obj_folder.png" alt="資料夾" onerror="this.parentElement.style.background='#3a2a1e';this.remove()">
+        </div>
+        <div class="drag-item" id="obj4" style="left:20%;top:67%;width:37%;height:55%;">
+          <img src="images/obj_tube.png" alt="試管架" onerror="this.parentElement.style.background='#1e3a2a';this.remove()">
+        </div>
+        <div class="drag-item" id="obj5" style="left:55%;top:48%;width:38%;height:44%;">
+          <img src="images/obj_cloth.jpg" alt="抹布" onerror="this.parentElement.style.background='#3a3030';this.remove()">
+        </div>
+        <div class="desk-hint" id="deskHint">拖曳移開桌上的物品</div>
+        <div class="cleared-msg" id="clearedMsg">發現了什麼……</div>
+      </div>
+    </div>
+
+    <!-- 藥品櫃（鎖著） -->
+    <div id="subview-cabinet" class="subview" style="display:flex;position:absolute;inset:0;z-index:10;opacity:0;pointer-events:none;background:#060709;align-items:center;justify-content:center;">
+      <span class="zoom-note">藥 品 櫃</span>
+      <button class="back-btn" data-back-subview="lab" style="z-index:30;">&#8592; 返回實驗室</button>
+      <div class="cabinet-wrap">
+        <img src="images/lab_cabinet.jpg" alt="藥品櫃">
+        <div class="cabinet-lock-zone" id="cabinetLockZone">
+          <span class="hotspot-tag">電子鎖……需要密碼</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 打開的藥品櫃 -->
+    <div id="subview-cabinet-open" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#060709;opacity:0;pointer-events:none;transition:opacity .6s;z-index:10;">
+      <span class="zoom-note">藥 品 櫃（已開啟）</span>
+      <button class="back-btn" data-back-subview="lab" style="z-index:30;">&#8592; 返回實驗室</button>
+      <div class="cabinet-open-wrap">
+        <img class="main" src="images/lab_cabinet_open.jpg" alt="打開的藥品櫃">
+        <div class="cabinet-paper-zone" id="cabinetPaperZone">
+          <span class="hotspot-tag">掉出了一張紙？</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 電子鎖 overlay（藥品櫃 260） ===== -->
+  <div class="elock-overlay" id="elockCabinet">
+    <div class="elock-box">
+      <p class="elock-title">藥 品 櫃 電 子 鎖</p>
+      <div class="elock-display" id="elockCabDisplay">/＿＿＿</div>
+      <div class="elock-keys">
+        <button class="elock-key" data-lock="cab" data-val="1">1</button>
+        <button class="elock-key" data-lock="cab" data-val="2">2</button>
+        <button class="elock-key" data-lock="cab" data-val="3">3</button>
+        <button class="elock-key" data-lock="cab" data-val="4">4</button>
+        <button class="elock-key" data-lock="cab" data-val="5">5</button>
+        <button class="elock-key" data-lock="cab" data-val="6">6</button>
+        <button class="elock-key" data-lock="cab" data-val="7">7</button>
+        <button class="elock-key" data-lock="cab" data-val="8">8</button>
+        <button class="elock-key" data-lock="cab" data-val="9">9</button>
+        <button class="elock-key del" data-lock="cab" data-val="del">&#9003;</button>
+        <button class="elock-key" data-lock="cab" data-val="0">0</button>
+        <button class="elock-key" data-lock="cab" data-val="clr">C</button>
+        <button class="elock-key confirm" data-lock="cab" data-val="ok">確 認</button>
+      </div>
+      <p class="elock-msg" id="elockCabMsg"></p>
+      <button class="elock-close" id="elockCabClose">取 消</button>
+    </div>
+  </div>
+
+  <!-- ===== 美術教室密碼紙 overlay ===== -->
+  <div id="overlay-artpw">
+    <img src="images/art_password.jpg" alt="美術教室密碼紙">
+    <button class="close-overlay" id="closeArtPw">&#10005; 關閉</button>
+  </div>
+
+  <!-- ===== 美術教室電子鎖（場景入口） ===== -->
+  <section id="scene-art-lock" class="scene">
+    <p class="art-lock-title">美 術 教 室</p>
+    <div class="elock-box" style="position:relative;z-index:1;">
+      <p class="elock-title">電 子 門 鎖</p>
+      <div class="elock-display" id="elockArtDisplay">＿＿＿＿</div>
+      <div class="elock-keys">
+        <button class="elock-key" data-lock="art" data-val="1">1</button>
+        <button class="elock-key" data-lock="art" data-val="2">2</button>
+        <button class="elock-key" data-lock="art" data-val="3">3</button>
+        <button class="elock-key" data-lock="art" data-val="4">4</button>
+        <button class="elock-key" data-lock="art" data-val="5">5</button>
+        <button class="elock-key" data-lock="art" data-val="6">6</button>
+        <button class="elock-key" data-lock="art" data-val="7">7</button>
+        <button class="elock-key" data-lock="art" data-val="8">8</button>
+        <button class="elock-key" data-lock="art" data-val="9">9</button>
+        <button class="elock-key del" data-lock="art" data-val="del">&#9003;</button>
+        <button class="elock-key" data-lock="art" data-val="0">0</button>
+        <button class="elock-key" data-lock="art" data-val="clr">C</button>
+        <button class="elock-key confirm" data-lock="art" data-val="ok">確 認</button>
+      </div>
+      <p class="elock-msg" id="elockArtMsg"></p>
+      <button class="elock-close" id="elockArtBack">&#8592; 返回走廊</button>
+    </div>
+  </section>
+
+  <!-- ===== 美術教室 ===== -->
+  <section id="scene-art" class="scene">
+    <div class="art-wrap">
+      <span class="scene-caption">美 術 教 室</span>
+      <img class="bg" src="images/art_room.jpg" alt="美術教室">
+      <button class="back-btn" data-back-scene="corridor">&#8592; 返回走廊</button>
+
+      <!-- L 顏料櫃 -->
+      <div class="art-hotspot art-hotspot-l" id="artHotspotL">
+        <span class="hotspot-tag">看看櫃子裡有什麼</span>
+      </div>
+      <!-- M 日曆 -->
+      <div class="art-hotspot art-hotspot-m" id="artHotspotM">
+        <span class="hotspot-tag">今天星期幾？日曆都沒撕</span>
+      </div>
+      <!-- N 日記 -->
+      <div class="art-hotspot art-hotspot-n" id="artHotspotN">
+        <span class="hotspot-tag">又有一張紙</span>
+      </div>
+      <!-- O 雕像 -->
+      <div class="art-hotspot art-hotspot-o" id="artHotspotO">
+        <span class="hotspot-tag">這個雕像怎麼好像在看我……</span>
+      </div>
+    </div>
+
+    <!-- L 放大：顏料櫃 -->
+    <div class="art-subview" id="artSubviewCabinet">
+      <span class="zoom-note">美 術 櫃 子</span>
+      <button class="back-btn" data-back-art="art">&#8592; 返回美術教室</button>
+      <img class="zoom-img" src="images/art_cabinet.jpg" alt="美術櫃子">
+    </div>
+
+    <!-- M 放大：日曆 -->
+    <div class="art-subview" id="artSubviewCalendar">
+      <span class="zoom-note">日 曆</span>
+      <button class="back-btn" data-back-art="art">&#8592; 返回美術教室</button>
+      <img class="zoom-img" src="images/art_calendar.jpg" alt="日曆">
+    </div>
+
+    <!-- N 放大：日記 -->
+    <div class="art-subview" id="artSubviewDiary">
+      <span class="zoom-note">日 記</span>
+      <button class="back-btn" data-back-art="art">&#8592; 返回美術教室</button>
+      <img class="zoom-img" src="images/art_diary.jpg" alt="日記">
+    </div>
+
+    <!-- O 放大：雕像 + 密語對話框 -->
+    <div class="art-subview" id="artSubviewStatue">
+      <span class="zoom-note">雕 像</span>
+      <button class="back-btn" data-back-art="art">&#8592; 返回美術教室</button>
+      <img class="zoom-img" src="images/art_statue.png" alt="雕像">
+      <div class="statue-dialog">
+        <p>「此山是我開，此樹是我栽，<br>想要由此過，留下通關密語……」</p>
+        <div class="statue-input-row">
+          <input type="text" maxlength="1" inputmode="numeric" class="statue-digit" data-idx="0">
+          <input type="text" maxlength="1" inputmode="numeric" class="statue-digit" data-idx="1">
+          <input type="text" maxlength="1" inputmode="numeric" class="statue-digit" data-idx="2">
+        </div>
+        <div class="statue-actions">
+          <button class="lock-btn" id="statueSubmit">確 認</button>
+        </div>
+        <p class="statue-msg" id="statueMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第13號教室：文字冒險對話 ===== -->
+  <section id="scene-room13" class="scene">
+    <div class="room13-bg">
+      <img src="images/room13.jpg" alt="第13號教室" onerror="this.style.display='none'">
+    </div>
+    <img class="room13-portrait" id="portrait-shu" src="images/shu_1.png" alt="輸賠剩">
+    <img class="room13-portrait" id="portrait-hao" src="images/hao_2.png" alt="郝事多">
+    <img class="room13-portrait" id="portrait-li"  src="images/li_3.png"  alt="李奪會">
+
+    <div class="room13-dialog-box" id="room13DialogBox">
+      <p class="room13-speaker-name" id="room13SpeakerName">&nbsp;</p>
+      <p class="room13-dialog-text" id="room13DialogText"></p>
+      <p class="room13-continue-hint" id="room13ContinueHint">點擊繼續</p>
+    </div>
+  </section>
+
+  <!-- ===== 黑屏轉場 + 逃脫成功 ===== -->
+  <section id="scene-blackout" class="scene">
+    <p class="escape-title" id="escapeTitle">逃 脫 成 功</p>
+  </section>
+
+  <!-- 第13號教室背景音樂 -->
+  <!-- 樓梯口～理化實驗室 背景音樂 -->
+  <audio id="bgmDarkness" src="audio/bgm_darkness.mp3" loop preload="auto"></audio>
+  <!-- 美術教室 背景音樂 -->
+  <audio id="bgmDream" src="audio/bgm_dream.mp3" loop preload="auto"></audio>
+  <!-- 第13號教室～逃脫成功 背景音樂 -->
+  <audio id="bgmRoom13" src="audio/bgm_room13.mp3" loop preload="auto"></audio>
+
+</div>
+
+<script>
+(function(){
+  /* ════════════════════════════════
+     場景管理
+  ════════════════════════════════ */
+  const scenes={
+    cover:    document.getElementById('scene-cover'),
+    story1:   document.getElementById('scene-story1'),
+    story2:   document.getElementById('scene-story2'),
+    stairs:   document.getElementById('scene-stairs'),
+    lock:     document.getElementById('scene-lock'),
+    corridor: document.getElementById('scene-corridor'),
+    lab:      document.getElementById('scene-lab'),
+    artLock:  document.getElementById('scene-art-lock'),
+    art:      document.getElementById('scene-art'),
+    room13:   document.getElementById('scene-room13'),
+    blackout: document.getElementById('scene-blackout'),
+  };
+  // 樓梯口子畫面
+  const stairsSubviews={
+    board:  document.getElementById('subview-board'),
+    note:   document.getElementById('subview-note'),
+    detail: document.getElementById('subview-detail'),
+  };
+  // 實驗室子畫面
+  const labSubviews={
+    desk:        document.getElementById('subview-desk'),
+    cabinet:     document.getElementById('subview-cabinet'),
+    cabinetOpen: document.getElementById('subview-cabinet-open'),
+  };
+
+  function showScene(name){
+    Object.values(scenes).forEach(s=>s.classList.remove('active'));
+    if(scenes[name]) scenes[name].classList.add('active');
+    updateBgmForScene(name);
+  }
+
+  /* ════════════════════════════════
+     背景音樂管理
+     - bgmDarkness：樓梯口 → 理化實驗室（離開實驗室回走廊就停）
+     - bgmDream   ：美術教室開始播放（進入 scene-art 才播）
+     - bgmRoom13  ：第13號教室 → 黑屏逃脫成功，音量 0.35
+  ════════════════════════════════ */
+  const bgmDarkness = document.getElementById('bgmDarkness');
+  const bgmDream     = document.getElementById('bgmDream');
+  const bgmRoom13     = document.getElementById('bgmRoom13');
+  const ROOM13_VOLUME = 0.35;
+  const DARKNESS_VOLUME = 0.45;
+  const DREAM_VOLUME = 0.4;
+
+  // 場景名稱屬於「darkness 音樂範圍」：樓梯口、密碼鎖、理化實驗室
+  // 注意：corridor（走廊）不在範圍內 → 只要離開理化實驗室（不論去走廊或其他場景），音樂立刻停止
+  const DARKNESS_SCENES = new Set(['stairs','lock','lab']);
+  // 場景名稱屬於「dream 音樂範圍」：美術教室電子鎖之後 ~ 美術教室
+  const DREAM_SCENES = new Set(['art']);
+  // 場景名稱屬於「room13 音樂範圍」：第13號教室 ~ 逃脫成功
+  const ROOM13_SCENES = new Set(['room13','blackout']);
+
+  function safePlay(audioEl, volume){
+    audioEl.volume = volume;
+    if(audioEl.paused){
+      const p = audioEl.play();
+      if(p && p.catch) p.catch(()=>{ /* 需使用者互動才能播放，下一次點擊會重試 */ });
+    }
+  }
+  function safePause(audioEl){
+    if(!audioEl.paused) audioEl.pause();
+  }
+
+  function updateBgmForScene(name){
+    if(DARKNESS_SCENES.has(name)){
+      safePlay(bgmDarkness, DARKNESS_VOLUME);
+    } else {
+      safePause(bgmDarkness);
+    }
+
+    if(DREAM_SCENES.has(name)){
+      safePlay(bgmDream, DREAM_VOLUME);
+    } else {
+      safePause(bgmDream);
+    }
+
+    if(ROOM13_SCENES.has(name)){
+      safePlay(bgmRoom13, ROOM13_VOLUME);
+    } else {
+      safePause(bgmRoom13);
+    }
+  }
+  function showStairsSubview(name){
+    Object.values(stairsSubviews).forEach(el=>el.classList.remove('active'));
+    if(name && stairsSubviews[name]) stairsSubviews[name].classList.add('active');
+  }
+  function showLabSubview(name){
+    // desk 用自訂 active，cabinet/cabinetOpen 用 opacity style
+    const desk=labSubviews.desk;
+    const cab=labSubviews.cabinet;
+    const cabOpen=labSubviews.cabinetOpen;
+    desk.classList.toggle('active', name==='desk');
+    cab.style.opacity   = name==='cabinet'     ? '1' : '0';
+    cab.style.pointerEvents = name==='cabinet' ? 'auto' : 'none';
+    cabOpen.style.opacity   = name==='cabinetOpen' ? '1' : '0';
+    cabOpen.style.pointerEvents = name==='cabinetOpen' ? 'auto' : 'none';
+  }
+
+  /* ════════════════════════════════
+     封面：閃電
+  ════════════════════════════════ */
+  const lightning=document.getElementById('lightningOverlay');
+  function flashLightning(){
+    lightning.style.transition='opacity .08s';lightning.style.opacity='0.9';
+    setTimeout(()=>{lightning.style.transition='opacity .35s';lightning.style.opacity='0';},90);
+    setTimeout(()=>{
+      lightning.style.transition='opacity .05s';lightning.style.opacity='0.4';
+      setTimeout(()=>{lightning.style.transition='opacity .4s';lightning.style.opacity='0';},60);
+    },220);
+  }
+  setInterval(flashLightning,3000);
+
+  /* ════════════════════════════════
+     故事頁
+  ════════════════════════════════ */
+  function revealStoryLines(pg){
+    const lines=document.querySelectorAll(`.story-line[data-pg="${pg}"]`);
+    lines.forEach(l=>l.classList.remove('show'));
+    let i=0;
+    function next(){if(i<lines.length){lines[i].classList.add('show');i++;}}
+    next(); return next;
+  }
+  let nextLinePg1,nextLinePg2;
+  document.getElementById('startBtn').addEventListener('click',()=>{
+    showScene('story1'); nextLinePg1=revealStoryLines('1');
+  });
+  scenes.story1.addEventListener('click',e=>{
+    if(e.target.closest('#toStory2')) return; if(nextLinePg1) nextLinePg1();
+  });
+  document.getElementById('toStory2').addEventListener('click',()=>{
+    showScene('story2'); nextLinePg2=revealStoryLines('2');
+  });
+  scenes.story2.addEventListener('click',e=>{
+    if(e.target.closest('#toStairs')) return; if(nextLinePg2) nextLinePg2();
+  });
+  document.getElementById('toStairs').addEventListener('click',()=>{
+    showScene('stairs'); showStairsSubview(null);
+  });
+
+  /* ════════════════════════════════
+     樓梯口熱區
+  ════════════════════════════════ */
+  document.getElementById('hotspotA').addEventListener('click',()=>showStairsSubview('board'));
+  document.getElementById('hotspotB').addEventListener('click',()=>showStairsSubview('detail'));
+  document.getElementById('hotspotC').addEventListener('click',()=>showScene('lock'));
+  document.getElementById('hotspotNote').addEventListener('click',e=>{
+    e.stopPropagation(); showStairsSubview('note');
+  });
+  // 樓梯口 back-btn（舊版 data-back）
+  document.querySelectorAll('#scene-stairs .back-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const t=btn.getAttribute('data-back');
+      if(t==='stairs'){showScene('stairs');showStairsSubview(null);}
+      else showStairsSubview(t);
+    });
+  });
+
+  /* ════════════════════════════════
+     Web Audio 音效
+  ════════════════════════════════ */
+  let audioCtx=null;
+  function getCtx(){
+    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function playClick(){
+    const ctx=getCtx(),osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.connect(g);g.connect(ctx.destination);osc.type='square';
+    osc.frequency.setValueAtTime(320,ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(180,ctx.currentTime+.06);
+    g.gain.setValueAtTime(.18,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.08);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.09);
+  }
+  function playUnlock(){
+    const ctx=getCtx();
+    [[880,0,.12],[1100,.13,.18]].forEach(([f,d,dur])=>{
+      const osc=ctx.createOscillator(),g=ctx.createGain();
+      osc.connect(g);g.connect(ctx.destination);osc.type='sine';
+      osc.frequency.setValueAtTime(f,ctx.currentTime+d);
+      g.gain.setValueAtTime(0,ctx.currentTime+d);
+      g.gain.linearRampToValueAtTime(.22,ctx.currentTime+d+.02);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+d+dur);
+      osc.start(ctx.currentTime+d);osc.stop(ctx.currentTime+d+dur+.02);
+    });
+  }
+  function playError(){
+    const ctx=getCtx(),osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.connect(g);g.connect(ctx.destination);osc.type='sawtooth';
+    osc.frequency.setValueAtTime(90,ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(55,ctx.currentTime+.35);
+    g.gain.setValueAtTime(.25,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.38);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.4);
+  }
+  function playBeep(){
+    const ctx=getCtx(),osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.connect(g);g.connect(ctx.destination);osc.type='sine';
+    osc.frequency.setValueAtTime(660,ctx.currentTime);
+    g.gain.setValueAtTime(.12,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.07);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.08);
+  }
+
+  /* ════════════════════════════════
+     旋轉式密碼鎖（樓梯口 963）
+  ════════════════════════════════ */
+  const dialValues=[0,0,0];
+  const dialEls=[document.getElementById('dial0'),document.getElementById('dial1'),document.getElementById('dial2')];
+  const PASSWORD=[9,6,3];
+  const lockMsg=document.getElementById('lockMsg');
+  function renderDials(){dialEls.forEach((el,i)=>el.textContent=dialValues[i]);}
+  renderDials();
+  document.querySelectorAll('.dial-arrow-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const idx=parseInt(btn.dataset.dial,10),dir=parseInt(btn.dataset.dir,10);
+      dialValues[idx]=(dialValues[idx]+dir+10)%10;
+      renderDials(); lockMsg.textContent=''; lockMsg.classList.remove('error'); playClick();
+    });
+  });
+  document.getElementById('lockSubmit').addEventListener('click',()=>{
+    if(dialValues.every((v,i)=>v===PASSWORD[i])){
+      playUnlock(); lockMsg.textContent='喀噠……鐵門開了。'; lockMsg.classList.remove('error');
+      setTimeout(()=>showScene('corridor'),950);
+    }else{
+      playError(); lockMsg.classList.remove('error'); void lockMsg.offsetWidth;
+      lockMsg.textContent='——什麼聲音也沒有，密碼似乎不對。'; lockMsg.classList.add('error');
+    }
+  });
+  document.getElementById('lockBack').addEventListener('click',()=>{
+    lockMsg.textContent=''; lockMsg.classList.remove('error');
+    showScene('stairs'); showStairsSubview(null);
+  });
+
+  /* ════════════════════════════════
+     二樓走廊門
+  ════════════════════════════════ */
+  let artUnlocked=false;
+  document.getElementById('doorE').addEventListener('click',()=>{
+    showScene('lab'); showLabSubview(null);
+  });
+  document.getElementById('doorF').addEventListener('click',()=>{
+    if(artUnlocked){ showScene('art'); }
+    else{
+      const msg=document.getElementById('art-locked-msg');
+      msg.style.display='block';
+    }
+  });
+  document.getElementById('artLockedClose').addEventListener('click',()=>{
+    document.getElementById('art-locked-msg').style.display='none';
+  });
+
+  /* ════════════════════════════════
+     實驗室場景
+  ════════════════════════════════ */
+  // back-btn：data-back-scene → showScene
+  document.querySelectorAll('[data-back-scene]').forEach(btn=>{
+    btn.addEventListener('click',()=>showScene(btn.getAttribute('data-back-scene')));
+  });
+  // back-btn：data-back-subview → 回到理化實驗室主畫面
+  document.querySelectorAll('[data-back-subview]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const t=btn.getAttribute('data-back-subview');
+      if(t==='lab'){ showScene('lab'); showLabSubview(null); }
+    });
+  });
+  document.getElementById('hotspotI').addEventListener('click',()=>showLabSubview('desk'));
+  document.getElementById('hotspotG').addEventListener('click',()=>showLabSubview('cabinet'));
+
+  /* ── 桌面拖曳 ── */
+  const deskScene=document.getElementById('deskScene');
+  let removedCount=0;
+  const TOTAL_ITEMS=5;
+
+  function initDrag(el){
+    let dragging=false,startX,startY,ox,oy;
+    // 取得百分比轉 px 初始位置
+    function getPx(){
+      const r=deskScene.getBoundingClientRect();
+      return{
+        x: parseFloat(el.style.left)/100*r.width,
+        y: parseFloat(el.style.top)/100*r.height,
+      };
+    }
+    el.addEventListener('mousedown',e=>{
+      dragging=true;
+      const pos=getPx();
+      ox=e.clientX-pos.x; oy=e.clientY-pos.y;
+      el.style.transition='none';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove',e=>{
+      if(!dragging) return;
+      const r=deskScene.getBoundingClientRect();
+      const nx=e.clientX-r.left-ox;
+      const ny=e.clientY-r.top-oy;
+      el.style.left=(nx/r.width*100)+'%';
+      el.style.top =(ny/r.height*100)+'%';
+    });
+    window.addEventListener('mouseup',e=>{
+      if(!dragging) return; dragging=false;
+      // 拖出邊界視為移除
+      const r=deskScene.getBoundingClientRect();
+      const ex=e.clientX,ey=e.clientY;
+      const margin=30;
+      if(ex<r.left-margin||ex>r.right+margin||ey<r.top-margin||ey>r.bottom+margin){
+        el.classList.add('removed');
+        removedCount++;
+        checkDeskCleared();
+      }
+    });
+    // 觸控支援
+    el.addEventListener('touchstart',e=>{
+      dragging=true;
+      const pos=getPx();const t=e.touches[0];
+      ox=t.clientX-pos.x; oy=t.clientY-pos.y;
+      el.style.transition='none'; e.preventDefault();
+    },{passive:false});
+    window.addEventListener('touchmove',e=>{
+      if(!dragging) return;
+      const r=deskScene.getBoundingClientRect();const t=e.touches[0];
+      el.style.left=((t.clientX-r.left-ox)/r.width*100)+'%';
+      el.style.top =((t.clientY-r.top-oy)/r.height*100)+'%';
+    });
+    window.addEventListener('touchend',e=>{
+      if(!dragging) return; dragging=false;
+      const r=deskScene.getBoundingClientRect();
+      const t=e.changedTouches[0];
+      const ex=t.clientX,ey=t.clientY;
+      if(ex<r.left-30||ex>r.right+30||ey<r.top-30||ey>r.bottom+30){
+        el.classList.add('removed'); removedCount++; checkDeskCleared();
+      }
+    });
+  }
+  document.querySelectorAll('.drag-item').forEach(initDrag);
+
+  function checkDeskCleared(){
+    if(removedCount>=TOTAL_ITEMS){
+      // 底圖本來就是線索紙，不需要再 show；只顯示提示文字
+      document.getElementById('deskHint').style.display='none';
+      document.getElementById('clearedMsg').classList.add('show');
+    }
+  }
+
+  /* ── 藥品櫃電子鎖 ── */
+  document.getElementById('cabinetLockZone').addEventListener('click',()=>{
+    document.getElementById('elockCabinet').classList.add('active');
+    elockCabInput='';
+    updateElockDisplay('cab');
+  });
+
+  /* ── 打開藥品櫃後的密碼紙 ── */
+  document.getElementById('cabinetPaperZone').addEventListener('click',()=>{
+    document.getElementById('overlay-artpw').classList.add('active');
+  });
+  document.getElementById('closeArtPw').addEventListener('click',()=>{
+    document.getElementById('overlay-artpw').classList.remove('active');
+  });
+
+  /* ════════════════════════════════
+     電子鎖通用邏輯
+  ════════════════════════════════ */
+  let elockCabInput='';
+  let elockArtInput='';
+
+  function updateElockDisplay(lock){
+    const maxLen= lock==='cab' ? 3 : 4;
+    const blank = lock==='cab' ? '＿＿＿' : '＿＿＿＿';
+    const input = lock==='cab' ? elockCabInput : elockArtInput;
+    const el    = lock==='cab' ? document.getElementById('elockCabDisplay') : document.getElementById('elockArtDisplay');
+    // 顯示已輸入 + 剩餘空位
+    const shown = input + blank.slice(input.length * '＿'.length);
+    // 用全形字
+    let disp='';
+    for(let i=0;i<maxLen;i++){
+      disp+= i<input.length ? input[i] : '＿';
+    }
+    el.textContent=disp;
+  }
+
+  document.querySelectorAll('.elock-key').forEach(key=>{
+    key.addEventListener('click',()=>{
+      const lock=key.dataset.lock;
+      const val =key.dataset.val;
+      const maxLen= lock==='cab' ? 3 : 4;
+      let input = lock==='cab' ? elockCabInput : elockArtInput;
+      const msgEl= lock==='cab' ? document.getElementById('elockCabMsg') : document.getElementById('elockArtMsg');
+
+      if(val==='del'){input=input.slice(0,-1);}
+      else if(val==='clr'){input='';}
+      else if(val==='ok'){
+        const pw= lock==='cab' ? '260' : '1243';
+        if(input===pw){
+          playUnlock();
+          msgEl.textContent=''; msgEl.classList.remove('err');
+          if(lock==='cab'){
+            setTimeout(()=>{
+              document.getElementById('elockCabinet').classList.remove('active');
+              showLabSubview('cabinetOpen');
+            },600);
+          }else{
+            setTimeout(()=>{ showScene('art'); artUnlocked=true; },600);
+          }
+        }else{
+          playError();
+          msgEl.classList.remove('err'); void msgEl.offsetWidth;
+          msgEl.textContent='密碼錯誤'; msgEl.classList.add('err');
+        }
+        if(lock==='cab') elockCabInput=input; else elockArtInput=input;
+        updateElockDisplay(lock); return;
+      }
+      else if(input.length<maxLen){input+=val; playBeep();}
+
+      if(lock==='cab') elockCabInput=input; else elockArtInput=input;
+      updateElockDisplay(lock);
+      const msgEl2= lock==='cab' ? document.getElementById('elockCabMsg') : document.getElementById('elockArtMsg');
+      msgEl2.textContent=''; msgEl2.classList.remove('err');
+    });
+  });
+
+  document.getElementById('elockCabClose').addEventListener('click',()=>{
+    document.getElementById('elockCabinet').classList.remove('active');
+  });
+  document.getElementById('elockArtBack').addEventListener('click',()=>{
+    showScene('corridor');
+  });
+
+  /* ── 美術教室門鎖入口：點走廊 F 且未解鎖時先顯示鎖定提示；
+     解鎖後直接進美術教室；玩家也可從走廊 F 點進電子鎖畫面 ── */
+  // 補充：讓 F 門在未解鎖時跳到電子鎖畫面（而非只顯示提示）
+  // 覆蓋上方的 doorF listener
+  document.getElementById('doorF').removeEventListener('click',()=>{});
+  document.getElementById('doorF').onclick=()=>{
+    if(artUnlocked){ showScene('art'); }
+    else{ showScene('artLock'); elockArtInput=''; updateElockDisplay('art'); }
+  };
+  document.getElementById('artLockedClose').onclick=()=>{
+    document.getElementById('art-locked-msg').style.display='none';
+  };
+
+  /* ════════════════════════════════
+     美術教室：L/M/N/O 四熱區
+  ════════════════════════════════ */
+  const artSubviews={
+    cabinet:  document.getElementById('artSubviewCabinet'),
+    calendar: document.getElementById('artSubviewCalendar'),
+    diary:    document.getElementById('artSubviewDiary'),
+    statue:   document.getElementById('artSubviewStatue'),
+  };
+  function showArtSubview(name){
+    Object.values(artSubviews).forEach(el=>el.classList.remove('active'));
+    if(name && artSubviews[name]) artSubviews[name].classList.add('active');
+  }
+
+  document.getElementById('artHotspotL').addEventListener('click',()=>showArtSubview('cabinet'));
+  document.getElementById('artHotspotM').addEventListener('click',()=>showArtSubview('calendar'));
+  document.getElementById('artHotspotN').addEventListener('click',()=>showArtSubview('diary'));
+  document.getElementById('artHotspotO').addEventListener('click',()=>showArtSubview('statue'));
+
+  // 四個放大畫面的「返回美術教室」按鈕
+  document.querySelectorAll('[data-back-art]').forEach(btn=>{
+    btn.addEventListener('click',()=> showArtSubview(null) );
+  });
+
+  /* ── 雕像密語輸入（620） ── */
+  const STATUE_PASSWORD='620';
+  const statueDigits=Array.from(document.querySelectorAll('.statue-digit'));
+  const statueMsg=document.getElementById('statueMsg');
+
+  // 數字輸入框：限制只能輸入數字，自動跳到下一格
+  statueDigits.forEach((input,idx)=>{
+    input.addEventListener('input',()=>{
+      input.value=input.value.replace(/[^0-9]/g,'').slice(0,1);
+      if(input.value && idx<statueDigits.length-1){
+        statueDigits[idx+1].focus();
+      }
+      statueMsg.textContent=''; statueMsg.classList.remove('error');
+    });
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Backspace' && !input.value && idx>0){
+        statueDigits[idx-1].focus();
+      }
+      if(e.key==='Enter'){ document.getElementById('statueSubmit').click(); }
+    });
+  });
+
+  // 石像移動音效：低沉緩慢的摩擦聲
+  function playStoneMove(){
+    const ctx=getCtx();
+    const osc=ctx.createOscillator();
+    const noiseGain=ctx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(70,ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(45,ctx.currentTime+1.4);
+    osc.connect(noiseGain);noiseGain.connect(ctx.destination);
+    noiseGain.gain.setValueAtTime(0.001,ctx.currentTime);
+    noiseGain.gain.linearRampToValueAtTime(0.22,ctx.currentTime+0.3);
+    noiseGain.gain.linearRampToValueAtTime(0.001,ctx.currentTime+1.5);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+1.55);
+
+    // 疊加摩擦噪音（白噪音模擬石頭刮地）
+    const bufferSize=ctx.sampleRate*1.5;
+    const buffer=ctx.createBuffer(1,bufferSize,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i]=(Math.random()*2-1)*0.15;
+    const noise=ctx.createBufferSource();
+    noise.buffer=buffer;
+    const noiseFilter=ctx.createBiquadFilter();
+    noiseFilter.type='lowpass';
+    noiseFilter.frequency.setValueAtTime(300,ctx.currentTime);
+    const noiseOutGain=ctx.createGain();
+    noiseOutGain.gain.setValueAtTime(0.001,ctx.currentTime);
+    noiseOutGain.gain.linearRampToValueAtTime(0.3,ctx.currentTime+0.25);
+    noiseOutGain.gain.linearRampToValueAtTime(0.001,ctx.currentTime+1.5);
+    noise.connect(noiseFilter);noiseFilter.connect(noiseOutGain);noiseOutGain.connect(ctx.destination);
+    noise.start(ctx.currentTime);noise.stop(ctx.currentTime+1.5);
+  }
+
+  document.getElementById('statueSubmit').addEventListener('click',()=>{
+    const code=statueDigits.map(i=>i.value).join('');
+    if(code===STATUE_PASSWORD){
+      playStoneMove();
+      statueMsg.textContent='轟……石像緩緩讓開了路。';
+      statueMsg.classList.remove('error');
+      setTimeout(()=>{ showScene('room13'); startRoom13Story(); },1700);
+    }else{
+      playError();
+      statueMsg.classList.remove('error'); void statueMsg.offsetWidth;
+      statueMsg.textContent='石像紋風不動……密語不對。';
+      statueMsg.classList.add('error');
+    }
+  });
+
+  /* ════════════════════════════════
+     第13號教室：文字冒險對話劇本
+  ════════════════════════════════ */
+  const portraitEls={
+    shu: document.getElementById('portrait-shu'),
+    hao: document.getElementById('portrait-hao'),
+    li:  document.getElementById('portrait-li'),
+  };
+  const speakerNameEl = document.getElementById('room13SpeakerName');
+  const dialogTextEl  = document.getElementById('room13DialogText');
+  const dialogBoxEl   = document.getElementById('room13DialogBox');
+  const continueHintEl= document.getElementById('room13ContinueHint');
+
+  // 每句台詞：speaker（顯示名稱 / 立繪 key / null=旁白）、img（該句要切換的表情圖，可省略=維持原圖）、text
+  const room13Script=[
+    { speaker:null, name:'', text:'玩家解開大衛雕像的通關密語，推開門走進第 13 號教室。三位角色原本坐在沙發上，看到玩家進來，立刻開心地迎上前。' },
+    { speaker:'shu', name:'輸賠剩', img:'images/shu_1.png', text:'哇！恭喜你成功破關！太厲害了吧！我是輸賠剩，我因為很常在樓梯跌倒，有一次摔一跤就不小心發現這間教室，然後就變成這裡的常客了。' },
+    { speaker:'shu', name:'輸賠剩', img:'images/shu_1.png', text:'那個血跡應該沒有嚇到你們吧？摔那一跤差點傷到我英俊的臉龐。' },
+    { speaker:'shu', name:'輸賠剩', img:'images/shu_3.png', text:'我這種跑龍套的都能進來，沒想到你們是靠實力解謎進來的！真厲害。' },
+    { speaker:'hao', name:'郝事多', img:'images/hao_2.png', text:'歡迎來到第13號教室。我是郝事多，美術班的學長。' },
+    { speaker:'hao', name:'郝事多', img:'images/hao_3.png', text:'你剛才有經過美術教室對吧？因為每天被升學主義追著跑，實在太喘不過氣了，想要放鬆的時候，我就會躲來這裡休息。' },
+    { speaker:'li',  name:'李奪會', img:'images/li_3.png',  text:'終於見面啦！我是李奪會。你剛才在理化實驗室有看到我留下的密碼嗎？我的成績雖然不錯，但最近要大考又要參加科展，每天都要在實驗室練習，壓力真的很大。' },
+    { speaker:'li',  name:'李奪會', img:'images/li_1.png',  text:'跟你想像的不一樣對吧？' },
+    { speaker:'li',  name:'李奪會', img:'images/li_1.png',  text:'其實，這間教室是因為大家不想去夜自習，讀了太多書想要好好休息，所以我們才聯手把這裡改造成秘密基地。外面的紅綠色盲密碼、動物線索跟化學鍵密碼，都是我們設下的「門檻」啦！' },
+    { speaker:'hao', name:'郝事多', img:'images/hao_1.png', text:'（笑著點頭）沒錯，那些恐怖傳說只是為了不讓別人隨便靠近。不過，我們可不是鼓勵你來第 13 號教室一直耍廢休息喔！' },
+    { speaker:'li',  name:'李奪會', img:'images/li_3.png',  text:'我們在這裡找到了自己紓解壓力的方式，放鬆過後，大家會一起在這間教室組個讀書會，互相督促讀書。休息是為了走更長遠的路嘛！你要不要也加入我們？' },
+    { speaker:'li',  name:'李奪會', img:'images/li_2.png',  text:'不過……咦？剛剛在樓梯口看到你們的時候，我以為是 4 個人一起來耶，怎麼算一算才來了 3 個？是我眼花了嗎？' },
+  ];
+
+  let room13Index=0;
+  let room13Started=false;
+
+  function setActiveSpeaker(key){
+    Object.entries(portraitEls).forEach(([k,el])=>{
+      el.classList.remove('active-speaker','bystander');
+      if(k===key) el.classList.add('active-speaker');
+      else el.classList.add('bystander');
+    });
+  }
+
+  function renderRoom13Line(){
+    const line=room13Script[room13Index];
+    speakerNameEl.textContent = line.name || '';
+    dialogTextEl.textContent  = line.text;
+
+    if(line.speaker){
+      if(line.img) portraitEls[line.speaker].src=line.img;
+      setActiveSpeaker(line.speaker);
+    } else {
+      // 旁白：三人都淡出為旁觀者狀態（剛進門時尚未聚焦任何人）
+      Object.values(portraitEls).forEach(el=>{
+        el.classList.remove('active-speaker');
+        el.classList.add('bystander');
+      });
+    }
+
+    // 最後一句結束提示文字改變
+    continueHintEl.textContent = (room13Index>=room13Script.length-1) ? '點擊結束' : '點擊繼續';
+  }
+
+  function startRoom13Story(){
+    if(room13Started) return;
+    room13Started=true;
+    room13Index=0;
+    // 立繪初始：尚未聚焦，淡入為旁觀者
+    Object.values(portraitEls).forEach(el=>{
+      el.classList.add('bystander');
+    });
+    renderRoom13Line();
+    // 背景音樂已由 showScene('room13') → updateBgmForScene 統一處理，這裡不再重複播放
+  }
+
+  dialogBoxEl.addEventListener('click',()=>{
+    // 若任一背景音樂因瀏覽器自動播放限制而尚未開始，藉由這次點擊重試
+    if(bgmRoom13.paused && scenes.room13.classList.contains('active')){
+      bgmRoom13.play().catch(()=>{});
+    }
+
+    if(room13Index < room13Script.length-1){
+      room13Index++;
+      renderRoom13Line();
+    } else {
+      // 對話結束 → 黑屏 → 逃脫成功（bgmRoom13 持續播放到此畫面，由 showScene 統一管理）
+      showScene('blackout');
+      const titleEl=document.getElementById('escapeTitle');
+      titleEl.classList.remove('show');
+      setTimeout(()=>{ titleEl.classList.add('show'); },3000);
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
